@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<robot xmlns:sensor="http://playerstage.sourceforge.net/gazebo/xmlschema/#sensor"
+       xmlns:controller="http://playerstage.sourceforge.net/gazebo/xmlschema/#controller"
+       xmlns:interface="http://playerstage.sourceforge.net/gazebo/xmlschema/#interface"
+       xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <xacro:macro name="thmiddle_transmission" params="hand_type:=^ prefix:=^">
+        <!-- muscle hand -->
+        <xacro:if value="${hand_type == 'hand_c'}">
+            <transmission name="${prefix}thmiddle_transmission">
+                <type>sr_mechanism_model/SimpleTransmissionForMuscle</type>
+                <actuator name="${prefix}THJ2">
+                    <mechanicalReduction>1</mechanicalReduction>
+                </actuator>
+                <joint name="${prefix}THJ2">
+                    <hardwareInterface>EffortJointInterface</hardwareInterface>
+                    <hardwareInterface>PositionJointInterface</hardwareInterface>
+                </joint>
+            </transmission>
+        </xacro:if>
+        <!-- motor hand -->
+        <xacro:unless value="${hand_type == 'hand_c'}">
+            <transmission name="${prefix}thmiddle_transmission">
+                <type>sr_mechanism_model/SimpleTransmission</type>
+                <actuator name="${prefix}THJ2">
+                    <mechanicalReduction>1</mechanicalReduction>
+                </actuator>
+                <joint name="${prefix}THJ2">
+                    <hardwareInterface>EffortJointInterface</hardwareInterface>
+                    <hardwareInterface>PositionJointInterface</hardwareInterface>
+                </joint>
+            </transmission>
+        </xacro:unless>
+    </xacro:macro>
+</robot>

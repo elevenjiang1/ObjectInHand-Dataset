@@ -1,0 +1,23 @@
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:include filename="$(find sr_description)/hand/xacro/thumb/thbase.urdf.xacro" />
+  <xacro:include filename="$(find sr_description)/hand/xacro/thumb/thproximal.urdf.xacro" />
+  <xacro:include filename="$(find sr_description)/hand/xacro/thumb/thhub.urdf.xacro" />
+  <xacro:include filename="$(find sr_description)/hand/xacro/thumb/thmiddle.urdf.xacro" />
+  <xacro:include filename="$(find sr_description)/hand/xacro/thumb/thdistal.urdf.xacro" />
+
+  <xacro:macro name="thumb" params="hand_type:=^ hand_version:=^ tip_sensor:=^|pst mid_sensor:=^|none prox_sensor:=^|none reflect:=^ prefix:=^ parent is_lite">
+    <xacro:if value="${tip_sensor == 'bt_2p'}">
+      <xacro:property name="mid_sensor" value="bt_2p" />
+    </xacro:if>
+    <!-- Base -->
+    <xacro:thbase parent="${parent}" />
+    <!-- Proximal -->
+    <xacro:thproximal parent="${prefix}thbase" />
+    <!-- Hub -->
+    <xacro:thhub parent="${prefix}thproximal" is_lite="${is_lite}" />
+    <!-- Middle -->
+    <xacro:thmiddle parent="${prefix}thhub" />
+    <!-- Distal -->
+    <xacro:thdistal parent="${prefix}thmiddle" />
+  </xacro:macro>
+</robot>

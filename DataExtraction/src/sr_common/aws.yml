@@ -1,0 +1,31 @@
+settings:
+  machine_type: medium
+  ubuntu:
+    version: focal
+  ros:
+    release: noetic
+  docker:
+    image: public.ecr.aws/shadowrobot/build-tools
+    tag: focal-noetic
+  template_project_name: template_unit_tests_and_code_coverage
+  toolset:
+    branch: master
+    modules:
+      - check_cache
+      - code_coverage
+
+trunks:
+  - name: noetic-devel
+    jobs:
+      - name: code_coverage
+      - name: style_check
+        settings:
+          toolset:
+            modules:
+              - code_style_check
+              - check_license
+      - name: install_check
+        settings:
+          toolset:
+            modules:
+              - check_install

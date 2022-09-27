@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:macro name="knuckle_gazebo" params="prefix:=^ link_prefix:=^">
+    <gazebo reference="${prefix}${link_prefix}knuckle">
+      <!-- knuckle is not highly exposed, so bumper is not useful -->
+      <material>Gazebo/Grey</material>
+    </gazebo>
+  </xacro:macro>
+</robot>
