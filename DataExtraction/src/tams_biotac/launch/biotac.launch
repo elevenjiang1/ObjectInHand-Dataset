@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="periodic_normalization" default="true" />
+
+  <node pkg="tams_biotac" type="tams_biotac_node" name="tams_biotac_node" output="screen">
+    <param name="calibration_file" type="string" value="$(env HOME)/.ros/biotac_info/calibration.yaml" />
+    <param name="periodic_normalization" type="bool" value="$(arg periodic_normalization)" />
+  </node>
+</launch>

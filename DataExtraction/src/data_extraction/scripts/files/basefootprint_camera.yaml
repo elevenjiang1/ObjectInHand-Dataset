@@ -1,0 +1,19 @@
+parameters:
+  eye_on_hand: false
+  freehand_robot_movement: true
+  move_group: manipulator
+  move_group_namespace: /
+  namespace: /my_eob_calib_eye_on_base/
+  robot_base_frame: base_footprint
+  robot_effector_frame: rh_forearm
+  tracking_base_frame: camera_color_optical_frame
+  tracking_marker_frame: tag_503
+transformation:
+  qw: 0.4259700496630949
+  qx: -0.5042413458902228
+  qy: -0.6075956914385274
+  qz: 0.4417212442595166
+  x: 0.9663656839280179
+  y: -0.8159091715513896
+  z: 0.8434214748480067
+

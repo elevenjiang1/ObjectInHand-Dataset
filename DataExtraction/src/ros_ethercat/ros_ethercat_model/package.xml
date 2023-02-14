@@ -1,0 +1,41 @@
+<package>
+  <name>ros_ethercat_model</name>
+  <version>0.3.1</version>
+  <description>The mechanism model</description>
+  <maintainer email="software@shadowrobot.com">Shadow Robot's software team</maintainer>
+
+  <license>BSD</license>
+
+  <url type="website">http://www.shadowrobot.com/</url>
+
+  <author email="software@shadowrobot.com">Manos Nikolaidis</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>roscpp</build_depend>
+  <build_depend>hardware_interface</build_depend>
+  <build_depend>pluginlib</build_depend>
+  <build_depend>urdf</build_depend>
+  <build_depend>kdl_parser</build_depend>
+  <build_depend>sr_robot_msgs</build_depend>
+  <build_depend>joint_state_controller</build_depend>
+  <build_depend>cmake_modules</build_depend>
+  <build_depend>realtime_tools</build_depend>
+  <build_depend>ros_ethercat_hardware</build_depend>
+  <build_depend>tinyxml2</build_depend>
+  
+  <run_depend>roscpp</run_depend>
+  <run_depend>hardware_interface</run_depend>
+  <run_depend>pluginlib</run_depend>
+  <run_depend>urdf</run_depend>
+  <run_depend>kdl_parser</run_depend>
+  <run_depend>sr_robot_msgs</run_depend>
+  <run_depend>joint_state_controller</run_depend>
+  <run_depend>realtime_tools</run_depend>
+  <run_depend>ros_ethercat_hardware</run_depend>
+  <run_depend>tinyxml2</run_depend>
+
+  <export>
+    <hardware_interface plugin="${prefix}/ethercat_robot_hw_plugin.xml"/>
+  </export>
+</package>

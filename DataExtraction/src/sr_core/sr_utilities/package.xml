@@ -1,0 +1,56 @@
+<package>
+    <name>sr_utilities</name>
+    <version>1.4.0</version>
+    <description>sr_utilities contains different useful header libraries (math libraries, etc...).</description>
+    <maintainer email="software@shadowrobot.com">Shadow Robot's software team</maintainer>
+
+    <license>GPL</license>
+
+    <url type="website">http://ros.org/wiki/sr_utilities</url>
+    <url type="repository">https://github.com/shadow-robot/sr-ros-interface</url>
+    <url type="bugtracker">https://github.com/shadow-robot/sr-ros-interface/issues</url>
+
+    <author>Ugo Cupcic</author>
+
+    <!-- Dependencies which this package needs to build itself. -->
+    <buildtool_depend>catkin</buildtool_depend>
+
+    <!-- Dependencies needed to compile this package. -->
+    <build_depend>sensor_msgs</build_depend>
+    <build_depend>sr_robot_msgs</build_depend>
+    <build_depend>rospy</build_depend>
+    <build_depend>roscpp</build_depend>
+    <build_depend>tf</build_depend>
+    <build_depend>urdfdom_py</build_depend>
+    <build_depend>urdf</build_depend>
+    <build_depend>ros_ethercat_model</build_depend>
+    <build_depend>moveit_ros_planning_interface</build_depend>
+    <build_depend>moveit_ros_manipulation</build_depend>
+    <build_depend>moveit_ros_move_group</build_depend>
+    <build_depend>std_msgs</build_depend>
+    <build_depend>message_runtime</build_depend>
+
+    <!-- Dependencies needed after this package is compiled. -->
+    <run_depend>sensor_msgs</run_depend>
+    <run_depend>sr_robot_msgs</run_depend>
+    <run_depend>rospy</run_depend>
+    <run_depend>roscpp</run_depend>
+    <run_depend>tf</run_depend>
+    <run_depend>rostest</run_depend>
+    <run_depend>urdf</run_depend>
+    <run_depend>urdfdom_py</run_depend>
+    <run_depend>ros_ethercat_model</run_depend>
+    <run_depend>moveit_ros_planning_interface</run_depend>
+    <run_depend>moveit_ros_manipulation</run_depend>
+    <run_depend>moveit_ros_move_group</run_depend>
+    <run_depend>std_msgs</run_depend>
+    <run_depend>message_runtime</run_depend>
+
+    <!-- Dependencies needed only for running tests. -->
+    <test_depend>gtest</test_depend>
+    <test_depend>sr_ethercat_hand_config</test_depend>
+    <export>
+        <cpp lflags="-L${prefix}/lib -lsr_calibration" cflags="-I${prefix}/include"/>
+    </export>
+
+</package>

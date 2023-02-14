@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<package>
+  <name>tams_biotac</name>
+  <version>0.0.0</version>
+  <description>The tams_biotac package</description>
+
+  <maintainer email="5jonetzk@informatik.uni-hamburg.de">Yannick Jonetzko</maintainer>
+  <author email="5jonetzk@informatik.uni-hamburg.de">Yannick Jonetzko</author>
+
+  <license>BSD</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>roscpp</build_depend>
+  <build_depend>rospy</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_depend>std_srvs</build_depend>
+  <build_depend>geometry_msgs</build_depend>
+  <build_depend>visualization_msgs</build_depend>
+  <build_depend>message_generation</build_depend>
+  <build_depend>sr_robot_msgs</build_depend>
+  <build_depend>yaml-cpp</build_depend>
+  <build_depend>sr_hardware_interface</build_depend>
+
+  <run_depend>roscpp</run_depend>
+  <run_depend>rospy</run_depend>
+  <run_depend>std_msgs</run_depend>
+  <run_depend>std_srvs</run_depend>
+  <run_depend>geometry_msgs</run_depend>
+  <run_depend>visualization_msgs</run_depend>
+  <run_depend>message_runtime</run_depend>
+  <run_depend>sr_robot_msgs</run_depend>
+  <run_depend>yaml-cpp</run_depend>
+  <run_depend>sr_hardware_interface</run_depend>
+</package>

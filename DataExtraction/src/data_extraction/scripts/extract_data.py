@@ -17,10 +17,11 @@ import open3d as o3d
 import tf
 import rospy
 from cv_bridge import CvBridge
-from sensor_msgs.msg import Image
 from tf2_msgs.msg import TFMessage
 from geometry_msgs.msg import PoseArray
 from sr_robot_msgs.msg import BiotacAll
+from sensor_msgs.msg import Image,JointState
+from tams_biotac.msg import Contact,ContactArray
 
 Abs_Path=os.path.dirname(os.path.abspath(__file__))
 
@@ -134,36 +135,33 @@ class ExtractData:
         self.tf_linstener=tf.TransformListener()
         self.tf_broadcaster=tf.TransformBroadcaster()
         self.five_tip_name=['rh_thdistal_J1_dummy','rh_ff_J1_dummy','rh_mf_J1_dummy','rh_rf_J1_dummy','rh_lf_J1_dummy']
+        self.five_contact_name={"rh_th_biotac_link":0,"rh_ff_biotac_link":1, "rh_mf_biotac_link":2,"rh_rf_biotac_link":3, "rh_lf_biotac_link":4}
         self.shadowhand_base_link_name="rh_forearm"
-        self.base_end=['base_link','r_upper_arm_roll_link']
-        self.end_hand=['r_upper_arm_link','r_forearm_roll_link']
-        self.base_T_end=None
-        self.end_T_hand=None
-
+        self.basefootprint_link_name="base_footprint"
+        
         #Pre save data
         self._save_lock=False
         self._update_color_image=None
         self._update_depth_image=None
-        self._update_pose_array=None
-        self._update_tip_pose_array=None
         self._update_tip_data=None
-
+        self._update_tip_pose_array=None
+        self._update_tip_contact_array=None
+        self._update_joints_state=None
+        self._update_pose_array=None
         self.big_save_list=[]
 
         #For tactile
         while not rospy.is_shutdown():
             print("Please play rosbag in 10s, waiting the transform...")
             self.tf_linstener.waitForTransform('rh_thdistal_J1_dummy','rh_ff_J1_dummy',rospy.Time(0),rospy.Duration(10.0))
-            trans,rot=self.tf_linstener.lookupTransform(self.base_end[0],self.base_end[1],rospy.Time(0))
-            self.base_T_end=np.array([trans[0],trans[1],trans[2],rot[0],rot[1],rot[2],rot[3]])#in xyz qx,qy,qz,qw
-            self.matrix_base_T_end=matrix_from_quaternion(self.base_T_end[3:],pos=self.base_T_end[:3])
             
-            trans,rot=self.tf_linstener.lookupTransform(self.end_hand[0],self.end_hand[1],rospy.Time(0))
-            self.end_T_hand=np.array([trans[0],trans[1],trans[2],rot[0],rot[1],rot[2],rot[3]])
-            self.matrix_end_T_hand=matrix_from_quaternion(self.end_T_hand[3:],pos=self.end_T_hand[:3])
-
+            #Update base_T_shandohand
+            trans,rot=self.tf_linstener.lookupTransform(self.basefootprint_link_name,self.shadowhand_base_link_name,rospy.Time(0))
+            self.basefootprint_T_hand_pose=np.array([trans[0],trans[1],trans[2],rot[0],rot[1],rot[2],rot[3]])#in xyz qx,qy,qz,qw
+            self.matrix_basefootprint_T_hand=matrix_from_quaternion(self.basefootprint_T_hand_pose[3:],pos=self.basefootprint_T_hand_pose[:3])
+            self.FIX_camera_T_hand=np.matmul(np.linalg.inv(self.FIX_basefootprint_T_camera),self.matrix_basefootprint_T_hand)
+            
             break
-        self.matrix_base_T_hand=np.matmul(self.matrix_base_T_end,self.matrix_end_T_hand)
 
         #Update RGBD data
         rospy.Subscriber("/camera/color/image_raw",Image,self.update_color_image_cb,queue_size=1)
@@ -175,8 +173,16 @@ class ExtractData:
         #Update tip data
         rospy.Subscriber("/hand/rh/tactile_filtered",BiotacAll,self.update_tip_data_cb,queue_size=1)
 
+        #Update tip_contact data
+        rospy.Subscriber("/hand/rh/contacts",ContactArray,self.update_tip_contact_cb,queue_size=1)
+
         #Update tf transform
         rospy.Subscriber("/tf",TFMessage,self.update_tip_pose_cb,queue_size=1)
+        
+        #Update joints_states
+        rospy.Subscriber("/joint_states",JointState,self.update_joints_state_cb,queue_size=1)
+        
+
 
     def beautiful_print(self,data):
         print("!"*(len(data)+6))
@@ -246,16 +252,23 @@ class ExtractData:
             self.beautiful_print("!!!Config path: {} not exist!!!".format(config_file_path))
             sys.exit()
 
+        #Init sensorTobject
         camera_transmitter=self.get_pose_from_yaml("{}/{}/config/camera_transmitter.yaml".format(dataset_path,object_name))
         self.FIX_camera_T_transmitter=matrix_from_quaternion(quaternion=camera_transmitter[3:],pos=camera_transmitter[:3])
-        
         sensor_object=self.get_pose_from_yaml("{}/{}/config/sensor1_object_{}.yaml".format(dataset_path,object_name,object_name))
         self.FIX_sensor_T_object=matrix_from_quaternion(quaternion=sensor_object[3:],pos=sensor_object[:3])
 
         self.object_point_cloud = o3d.io.read_point_cloud("{}/{}/config/merged_cloud_{}.ply".format(dataset_path,object_name,object_name))
         self.object_point_cloud = self.object_point_cloud.voxel_down_sample(voxel_size=0.005)
         self.object_point_cloud.transform(self.FIX_sensor_T_object)
-
+        
+        #Init basefootprint_T_camera
+        basefootprint_T_camera_data=yaml.load(open(os.path.join(Abs_Path,"files/basefootprint_camera.yaml")))['transformation']
+        pos=np.array([basefootprint_T_camera_data['x'],basefootprint_T_camera_data['y'],basefootprint_T_camera_data['z']])
+        ori=np.array([basefootprint_T_camera_data['qx'],basefootprint_T_camera_data['qy'],basefootprint_T_camera_data['qz'],basefootprint_T_camera_data['qw']])
+        self.FIX_basefootprint_T_camera=matrix_from_quaternion(quaternion=ori,pos=pos)
+        
+        
         self.beautiful_print("Load {} object data".format(object_name))
 
     def update_color_image_cb(self,msg):
@@ -270,21 +283,19 @@ class ExtractData:
             self.save_lock=True
             
             #avoid save nothing
-            if self._update_depth_image is None or self._update_pose_array is None or self._update_tip_pose_array is None or self._update_tip_data is None:
+            if self._update_depth_image is None or self._update_pose_array is None or self._update_tip_pose_array is None or self._update_tip_data is None or self._update_tip_contact_array is None:
                 print("one data is None,stop to record!!")
                 self.save_lock=True
                 return
 
             #data in big_save_list will save later in main function
-            self.big_save_list.append([self._update_color_image,self._update_depth_image,self._update_pose_array,self._update_tip_data,self._update_tip_pose_array])
+            self.big_save_list.append([self._update_color_image,self._update_depth_image,self._update_pose_array,self._update_tip_data,self._update_tip_pose_array,self._update_tip_contact_array,self._update_joints_state])
             
             #Release self.save_lock
             self.save_lock=False
         
     def update_depth_image_cb(self,msg):
         depth_image=self.bridge.imgmsg_to_cv2(msg,"32FC1")
-
-        #Update depth image
         if not self.save_lock:
             self._update_depth_image=copy.deepcopy(depth_image)
 
@@ -292,7 +303,6 @@ class ExtractData:
         """
         To update pose array; get object pose_array(4*4 shape) in camera_frame
         """
-        #Get object pose
         position=msg.poses[0].position
         orientation=msg.poses[0].orientation
 
@@ -319,15 +329,19 @@ class ExtractData:
             trans,rot=self.tf_linstener.lookupTransform(self.shadowhand_base_link_name ,self.five_tip_name[4] ,rospy.Time(0))
             pose5=np.array([trans[0],trans[1],trans[2],rot[0],rot[1],rot[2],rot[3]])
 
-            #change matrix_base_T_hand to pose
-            trans=self.matrix_base_T_hand[:3,3]
-            rot=quaternion_from_matrix(self.matrix_base_T_hand)
+            #change matrix_basefootprint_T_hand to pose
+            trans=self.matrix_basefootprint_T_hand[:3,3]
+            rot=quaternion_from_matrix(self.matrix_basefootprint_T_hand)
             pose6=np.array([trans[0],trans[1],trans[2],rot[0],rot[1],rot[2],rot[3]])
+            
+            #Update basefootprintTcamera
+            trans,rot=self.tf_linstener.lookupTransform(self.shadowhand_base_link_name ,self.five_tip_name[4] ,rospy.Time(0))
+            pose5=np.array([trans[0],trans[1],trans[2],rot[0],rot[1],rot[2],rot[3]])
 
             #udpate array
             if not self.save_lock:
                 self._update_tip_pose_array=copy.deepcopy(np.array([pose1,pose2,pose3,pose4,pose5,pose6]))#6,7 array
-            
+                
     def update_tip_data_cb(self,msg):
         """
         Update tactile data
@@ -341,11 +355,34 @@ class ExtractData:
         if not self.save_lock:
             self._update_tip_data=copy.deepcopy(mix_tip_data)#5,19 array,int64 type
         
+    def update_tip_contact_cb(self,msg):
+        contact_array=np.zeros(5)
+        for contact in msg.contacts:
+            contact_index=self.five_contact_name[contact.header.frame_id]
+            contact_array[contact_index]=1
+
+        if not self.save_lock:
+            self._update_tip_contact_array=copy.deepcopy(contact_array)
+
+    def update_joints_state_cb(self,msg):
+        """
+        Order is:
+        [rh_FFJ1, rh_FFJ2, rh_FFJ3, rh_FFJ4, rh_LFJ1, rh_LFJ2, rh_LFJ3, rh_LFJ4, rh_LFJ5,
+        rh_MFJ1, rh_MFJ2, rh_MFJ3, rh_MFJ4, rh_RFJ1, rh_RFJ2, rh_RFJ3, rh_RFJ4, rh_THJ1,
+        rh_THJ2, rh_THJ3, rh_THJ4, rh_THJ5, rh_WRJ1, rh_WRJ2]
+        """
+        #Include two joints state, one is shadowhand joints,33 joints
+        #another is PR2 joints, 24 joints
+        if len(msg.position)==24:
+            joints_states=np.array(list(msg.position))
+            if not self.save_lock:
+                self._update_joints_state=copy.deepcopy(joints_states)
+        
 
 ############################Example for extract and show data################################
 def example_check_data():
     #1: Init ExtractData class
-    extractData=ExtractData(object_name="cleanser",Flag_save_data=False,init_node=True)
+    extractData=ExtractData(object_name="cracker",Flag_save_data=False,init_node=True)
     print("Begin to see images...")
 
     #2: load camera_matrix and point_cloud
@@ -396,17 +433,14 @@ def example_check_data():
             break
 
 def example_save_data():
-    #setup save target_path
-    target_path=os.path.join(Abs_Path,"example_data")
+    target_path="/home/media/WholeDataset/example"
     if not os.path.exists(target_path):
         temp=raw_input("target path not exist!!,create one? y for creation")
         if temp=='y':
             os.mkdir(target_path)
-            print("Create new path:")
-            print(target_path)
 
     #1: define ExtractData and check whether update data is new
-    extractData=ExtractData(object_name="cleanser",Flag_save_data=True,init_node=True)
+    extractData=ExtractData(object_name="cracker",Flag_save_data=True,init_node=True)
     print("Please use 'rosbag play xxx.bag' to send data")
     print("Begin to wait incoming data...")
     num_last_save_time=0
@@ -440,35 +474,28 @@ def example_save_data():
             print("!!!!target path not exist,please check!!!!")
             return
 
+        #update save count number
+        save_count_number=0
         if len(os.listdir(target_path))!=0:
-            print("!!!target_path existing data,please check!!!")
-            return
+            if len(os.listdir(target_path))//4!=0:
+                print("Contains {} data,but can not group each 4 data".format(len(os.listdir(target_path))))            
+            save_count_number=len(glob.glob(os.path.join(target_path,"color_*.png")))#Save base on color_image
+            print("!!!target_path existing data,Begin number will be:{}!!!".format(save_count_number))
 
         print("Begin to save data...")
+        begin_number=save_count_number
         for index,data in enumerate(extractData.big_save_list):
-            print("Saveing {}/{} data...".format(index,len(extractData.big_save_list)))
-            update_color_image,update_depth_image,update_pose_array,update_tip_data,update_tip_pose_array=data
-
+            print("Saveing {}/{} data...".format(index+begin_number,len(extractData.big_save_list)+begin_number))
             #2.2: save data in big list
-            cv.imwrite(os.path.join(target_path,"color_{}.png".format(index)),update_color_image)
-            depth_path=os.path.join(target_path,"depth_{}.png".format(index))
-            with open(depth_path,'wb') as f:
-                    writer=png.Writer(width=update_depth_image.shape[1],height=update_depth_image.shape[0],bitdepth=16)
-                    zgray2list=update_depth_image.tolist()
-                    writer.write(f,zgray2list)
-            np.savez(os.path.join(target_path,"meta_{}".format(index)),
-                    tip_data_array=update_tip_data,pose_array=update_pose_array,tip_pose_array=update_tip_pose_array)
+            update_color_image,update_depth_image,update_pose_array,update_tip_data,update_tip_pose_array,update_contact_array,update_joints_state=data
 
-
-            #2.3: generate mask image
-            #generate pre_plot_image
+            #2.3: plot_mask data
             plot_image=np.zeros(update_color_image.shape[:2],dtype=np.uint8)
             temp_plot_cloud=copy.deepcopy(object_point_cloud)
             temp_plot_cloud.transform(update_pose_array)
             uvs = project_points(np.asarray(temp_plot_cloud.points), K)
             for ii in range(len(uvs)):
                 cv.circle(plot_image,(uvs[ii,0],uvs[ii,1]),radius=5,color=255,thickness=-1)
-
             #generate contours
             thresh = cv.threshold(plot_image, 30, 255, cv.THRESH_BINARY)[1]
             _, contours, _ = cv.findContours(thresh.copy(), cv.RETR_EXTERNAL,cv.CHAIN_APPROX_SIMPLE)
@@ -479,11 +506,71 @@ def example_save_data():
                 cnt = max(contours, key=cv.contourArea)
                 mask_image=cv.drawContours(mask_image, [cnt], -1, 255, -1)
             else:
-                print("index {} has no mask!!!".format(index))
+                print("index {} has no mask!!!".format(save_count_number))
 
-            cv.imwrite(os.path.join(target_path,"mask_{}.png".format(index)),mask_image)
+            #2.4: save all data
+            #color_image
+            cv.imwrite(os.path.join(target_path,"color_{}.png".format(save_count_number)),update_color_image)
+            #depth_image
+            depth_path=os.path.join(target_path,"depth_{}.png".format(save_count_number))
+            with open(depth_path,'wb') as f:
+                    writer=png.Writer(width=update_depth_image.shape[1],height=update_depth_image.shape[0],bitdepth=16)
+                    zgray2list=update_depth_image.tolist()
+                    writer.write(f,zgray2list)
+            #meta data
+            np.savez(os.path.join(target_path,"meta_{}".format(save_count_number)),
+                    tip_data_array=update_tip_data,pose_array=update_pose_array,tip_pose_array=update_tip_pose_array,tip_contact_array=update_contact_array,joints_state=update_joints_state,camera_T_shadowhand=extractData.FIX_camera_T_hand)
+            #mask_image
+            cv.imwrite(os.path.join(target_path,"mask_{}.png".format(save_count_number)),mask_image)
 
-            
+            save_count_number=save_count_number+1
+
+def see_images():
+    target_path="/home/media/WholeDataset/{}".format("cleanser")
+    begin_to_see=2800
+
+    speed_up=10#To skip the index image
+
+    while True:
+        print("See image:{}".format(begin_to_see))
+        image=cv.imread(os.path.join(target_path,"color_{}.png".format(begin_to_see)))
+        
+        mask=cv.imread(os.path.join(target_path,"mask_{}.png".format(begin_to_see)))
+
+        cv.imshow("image",image)
+        cv.imshow("mask",mask)
+
+        temp_image=np.zeros(image.shape)
+        temp_image[mask==255]=image[mask==255]
+        temp_image=temp_image.astype(np.uint8)
+        cv.imshow("sement image",temp_image)
+
+        temp=cv.waitKey(0)
+        if temp==ord('b'):
+            begin_to_see=begin_to_see-2*speed_up
+        if temp==ord('q'):
+            break
+
+        begin_to_see=begin_to_see+1*speed_up
+
+def remove_data():
+    delete_begin=5993
+    dataset_path="/home/media/WholeDataset/{}".format("cleanser")
+    all_index_file=glob.glob(os.path.join(dataset_path,"color_*.png"))
+    print(len(all_index_file))
+
+
+    # max_index=6459
+    # while delete_begin<max_index:
+    #     os.remove(os.path.join(dataset_path,"color_{}.png".format(delete_begin)))
+    #     os.remove(os.path.join(dataset_path,"depth_{}.png".format(delete_begin)))
+    #     os.remove(os.path.join(dataset_path,"mask_{}.png".format(delete_begin)))
+    #     os.remove(os.path.join(dataset_path,"meta_{}.npz".format(delete_begin)))
+    #     delete_begin=delete_begin+1
+
+    
+
 if __name__ == '__main__':
-    example_check_data()#To see data extract from rosbag
-    # example_save_data()#To save data extract from rosbag
+    # example_check_data()
+    example_save_data()
+
