@@ -118,7 +118,8 @@ class ExtractData:
         :param: init_node: whether for init ros node
         """
         if init_node:
-            rospy.init_node("ExtractData")
+            temp=rospy.init_node("ExtractData_{}".format(object_name))
+            
 
         #Update Fix transform
         self.object_name=object_name
@@ -153,7 +154,7 @@ class ExtractData:
         #For tactile
         while not rospy.is_shutdown():
             print("Please play rosbag in 10s, waiting the transform...")
-            self.tf_linstener.waitForTransform('rh_thdistal_J1_dummy','rh_ff_J1_dummy',rospy.Time(0),rospy.Duration(10.0))
+            self.tf_linstener.waitForTransform(self.basefootprint_link_name,self.shadowhand_base_link_name,rospy.Time(0),rospy.Duration(10.0))
             
             #Update base_T_shandohand
             trans,rot=self.tf_linstener.lookupTransform(self.basefootprint_link_name,self.shadowhand_base_link_name,rospy.Time(0))
@@ -181,6 +182,7 @@ class ExtractData:
         
         #Update joints_states
         rospy.Subscriber("/joint_states",JointState,self.update_joints_state_cb,queue_size=1)
+        
         
 
 
@@ -334,9 +336,6 @@ class ExtractData:
             rot=quaternion_from_matrix(self.matrix_basefootprint_T_hand)
             pose6=np.array([trans[0],trans[1],trans[2],rot[0],rot[1],rot[2],rot[3]])
             
-            #Update basefootprintTcamera
-            trans,rot=self.tf_linstener.lookupTransform(self.shadowhand_base_link_name ,self.five_tip_name[4] ,rospy.Time(0))
-            pose5=np.array([trans[0],trans[1],trans[2],rot[0],rot[1],rot[2],rot[3]])
 
             #udpate array
             if not self.save_lock:
@@ -433,14 +432,21 @@ def example_check_data():
             break
 
 def example_save_data():
-    target_path="/home/media/WholeDataset/example"
+    if len(sys.argv)!=2:
+        print("Please input object name!")
+        return
+    else:
+        print("your input is:{}".format(sys.argv[1]))
+        object_name=sys.argv[1]
+
+    target_path="/home/media/WholeDataset/{}".format(object_name)
     if not os.path.exists(target_path):
         temp=raw_input("target path not exist!!,create one? y for creation")
         if temp=='y':
             os.mkdir(target_path)
 
     #1: define ExtractData and check whether update data is new
-    extractData=ExtractData(object_name="cracker",Flag_save_data=True,init_node=True)
+    extractData=ExtractData(object_name=object_name,Flag_save_data=True,init_node=True)
     print("Please use 'rosbag play xxx.bag' to send data")
     print("Begin to wait incoming data...")
     num_last_save_time=0
@@ -450,14 +456,14 @@ def example_save_data():
         if num_update_save==num_last_save_time:
             print("last data not update!!!")
             count=count+1
-            if count>3:
+            if count>2:
                 break
 
         else:
             print("Extract data Have save {} data".format(len(extractData.big_save_list)))
             count=0
             num_last_save_time=num_update_save
-        rospy.sleep(1)
+        rospy.sleep(0.5)
 
     #2: save all data
     #2.1: Load camera_matrix and pointcloud to  generate new shapes
@@ -465,9 +471,13 @@ def example_save_data():
                 0, 610.092,253.658, 
                 0, 0, 1]).reshape(3, 3)
 
-    object_point_cloud=extractData.object_point_cloud
-
-
+    #Not use extractData,avoid continue linsten data
+    object_point_cloud=copy.deepcopy(extractData.object_point_cloud)
+    all_data_list=copy.deepcopy(extractData.big_save_list)
+    FIX_camera_T_hand=copy.deepcopy(extractData.FIX_camera_T_hand)
+    
+    rospy.signal_shutdown("temp")
+    
     save_flag=True
     if save_flag:
         if not os.path.exists(target_path):
@@ -477,15 +487,15 @@ def example_save_data():
         #update save count number
         save_count_number=0
         if len(os.listdir(target_path))!=0:
-            if len(os.listdir(target_path))//4!=0:
+            if len(os.listdir(target_path))%4!=0:
                 print("Contains {} data,but can not group each 4 data".format(len(os.listdir(target_path))))            
             save_count_number=len(glob.glob(os.path.join(target_path,"color_*.png")))#Save base on color_image
             print("!!!target_path existing data,Begin number will be:{}!!!".format(save_count_number))
 
         print("Begin to save data...")
         begin_number=save_count_number
-        for index,data in enumerate(extractData.big_save_list):
-            print("Saveing {}/{} data...".format(index+begin_number,len(extractData.big_save_list)+begin_number))
+        for index,data in enumerate(all_data_list):
+            print("Saveing {}/{} data...".format(index+begin_number,len(all_data_list)+begin_number))
             #2.2: save data in big list
             update_color_image,update_depth_image,update_pose_array,update_tip_data,update_tip_pose_array,update_contact_array,update_joints_state=data
 
@@ -519,23 +529,30 @@ def example_save_data():
                     writer.write(f,zgray2list)
             #meta data
             np.savez(os.path.join(target_path,"meta_{}".format(save_count_number)),
-                    tip_data_array=update_tip_data,pose_array=update_pose_array,tip_pose_array=update_tip_pose_array,tip_contact_array=update_contact_array,joints_state=update_joints_state,camera_T_shadowhand=extractData.FIX_camera_T_hand)
+                    tip_data_array=update_tip_data,pose_array=update_pose_array,tip_pose_array=update_tip_pose_array,tip_contact_array=update_contact_array,joints_state=update_joints_state,camera_T_shadowhand=FIX_camera_T_hand)
             #mask_image
             cv.imwrite(os.path.join(target_path,"mask_{}.png".format(save_count_number)),mask_image)
 
             save_count_number=save_count_number+1
+            
+        print("Finall save {} data, the last data is:{}, group 4 is:{}".format(len(all_data_list),len(glob.glob(os.path.join(target_path,"color_*.png"))),len(os.listdir(target_path))%4))            
 
-def see_images():
+def check_data():
     target_path="/home/media/WholeDataset/{}".format("cleanser")
-    begin_to_see=2800
+    begin_to_see=0
 
     speed_up=10#To skip the index image
 
     while True:
+        print("****************************************************************************")
         print("See image:{}".format(begin_to_see))
         image=cv.imread(os.path.join(target_path,"color_{}.png".format(begin_to_see)))
-        
         mask=cv.imread(os.path.join(target_path,"mask_{}.png".format(begin_to_see)))
+        meta_data=np.load(os.path.join(target_path,"meta_{}.npz".format(begin_to_see)))
+        for data in meta_data.keys():
+            print("***********{} is*****************".format(data))
+            print(meta_data[data])
+        
 
         cv.imshow("image",image)
         cv.imshow("mask",mask)
@@ -554,23 +571,59 @@ def see_images():
         begin_to_see=begin_to_see+1*speed_up
 
 def remove_data():
-    delete_begin=5993
-    dataset_path="/home/media/WholeDataset/{}".format("cleanser")
+    delete_begin=2385
+    dataset_path="/home/media/WholeDataset/{}".format("cup")
     all_index_file=glob.glob(os.path.join(dataset_path,"color_*.png"))
-    print(len(all_index_file))
-
-
-    # max_index=6459
-    # while delete_begin<max_index:
-    #     os.remove(os.path.join(dataset_path,"color_{}.png".format(delete_begin)))
-    #     os.remove(os.path.join(dataset_path,"depth_{}.png".format(delete_begin)))
-    #     os.remove(os.path.join(dataset_path,"mask_{}.png".format(delete_begin)))
-    #     os.remove(os.path.join(dataset_path,"meta_{}.npz".format(delete_begin)))
-    #     delete_begin=delete_begin+1
-
     
+    for i in range(len(all_index_file)):
+        color_path=os.path.join(dataset_path,"color_{}.png".format(i))
+        depth_path=os.path.join(dataset_path,"depth_{}.png".format(i))
+        mask_path=os.path.join(dataset_path,"mask_{}.png".format(i))
+        meta_path=os.path.join(dataset_path,"meta_{}.npz".format(i))
+        
+        if i<delete_begin:
+            if not os.path.exists(color_path):
+                print("{} not exist".format(color_path))
+            if not os.path.exists(depth_path):
+                print("{} not exist".format(depth_path))
+            if not os.path.exists(meta_path):
+                print("{} not exist".format(meta_path))
+            if not os.path.exists(mask_path):
+                print("{} not exist".format(mask_path))
+            continue
+        
+        if os.path.exists(color_path):
+            os.remove(color_path)
+        if os.path.exists(depth_path):
+            os.remove(depth_path)
+        if os.path.exists(mask_path):
+            os.remove(mask_path)
+        if os.path.exists(meta_path):
+            os.remove(meta_path)
+            
+    print("Now all data file contain {} data, split 4 is:{}".format(len(glob.glob(os.path.join(dataset_path,"color_*.png"))),len(os.listdir(dataset_path))%4))
+    print(len(os.listdir(dataset_path))%4)
+    print(len(os.listdir(dataset_path)))
+        
+def generate_bag_data():
+    object_name="sugar"
+    target_path="/home/media/2022-0827/{}".format(object_name)
+    bag_list=glob.glob(os.path.join(target_path,"*processed.bag"))
+    bag_list.sort()
+    file=open(os.path.join("/home/media/WholeDataset/record_files","{}.txt".format(object_name)),'w')
+    for data in bag_list:
+        file.write(data.split('/')[-1]+":"+'\n')
+        
+    
+
 
 if __name__ == '__main__':
     # example_check_data()
-    example_save_data()
+    remove_data()
+    # generate_bag_data()
+    
+    # example_save_data()
+    
+    
+    
 
