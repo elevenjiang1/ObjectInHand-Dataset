@@ -529,7 +529,8 @@ def example_save_data():
                     writer.write(f,zgray2list)
             #meta data
             np.savez(os.path.join(target_path,"meta_{}".format(save_count_number)),
-                    tip_data_array=update_tip_data,pose_array=update_pose_array,tip_pose_array=update_tip_pose_array,tip_contact_array=update_contact_array,joints_state=update_joints_state,camera_T_shadowhand=FIX_camera_T_hand)
+                    tip_data_array=update_tip_data,pose_array=update_pose_array,tip_pose_array=update_tip_pose_array,tip_contact_array=update_contact_array,
+                    joints_state=update_joints_state,camera_T_shadowhand=FIX_camera_T_hand)
             #mask_image
             cv.imwrite(os.path.join(target_path,"mask_{}.png".format(save_count_number)),mask_image)
 
@@ -619,10 +620,10 @@ def generate_bag_data():
 
 if __name__ == '__main__':
     # example_check_data()
-    remove_data()
+    # remove_data()
     # generate_bag_data()
     
-    # example_save_data()
+    example_save_data()
     
     
     

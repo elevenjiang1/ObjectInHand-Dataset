@@ -34,3 +34,12 @@ rosbag play rosbag play 2022-08-14-16-00-16-processed.bag
 roscd data_extraction/scripts/
 python extract_data.py
 ```
+
+
+## 2. SelectLSTM
+Please download the dataset first, and change all dataset path in train_network.py and test_network.py
+Default whole dataset path is in: ```/home/media/WholeDataset```
+
+
+Both tactile, vision, merge and selectLSTM training function is in train_network.py
+To train the SelectLSTM, please generate select_dataset by function ```generate_select_data()``` in test_network.py, base on yourself training network
