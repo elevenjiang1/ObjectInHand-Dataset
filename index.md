@@ -1,6 +1,6 @@
 ---
 layout: default
-title:  PoseFusion: Robust Object-in-Hand Pose Estimation with SelectRNN
+title:  PoseFusion: Robust Object-in-Hand Pose Estimation with SelectLSTM
 description: 6D pose dataset for objects in dexterous hand
 ---
 [Yuyang Tu](https://tams.informatik.uni-hamburg.de/people/tu/), [Junnan Jiang](https://elevenjiang1.github.io/), [Shuang Li](https://tams.informatik.uni-hamburg.de/people/sli/), [Norman Hendrich](https://tams.informatik.uni-hamburg.de/people/hendrich/index.php), [Miao Li](https://miaoli.github.io/) and [Jianwei Zhang](https://tams.informatik.uni-hamburg.de/people/zhang/)
@@ -37,7 +37,7 @@ We upload all our dataset in [GoogleDrive](https://drive.google.com/drive/folder
 
 ![Whole_pipline](picture/Whole_pipline.png)
 
-The whole pipeline of PoseFusion. First, tactile data including electrode reading and fingertip pose, and vision data including RGB image and point cloud are processed separately for feature extraction and pose estimation. Then the merge feature including tactile and vision features is also used for pose estimation. Finally, the three output poses and the merge feature are fed into SelectRNN for the best pose selection among the three poses, which aims to avoid the error of the modal data collapse.
+The whole pipeline of PoseFusion. First, tactile data including electrode reading and fingertip pose, and vision data including RGB image and point cloud are processed separately for feature extraction and pose estimation. Then the merge feature including tactile and vision features is also used for pose estimation. Finally, the three output poses and the merge feature are fed into SelectLSTM for the best pose selection among the three poses, which aims to avoid the error of the modal data collapse.
 
 
 
@@ -45,4 +45,7 @@ The whole pipeline of PoseFusion. First, tactile data including electrode readin
 
 ## 4. Videos
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/X1x5t4-xVW8" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+<iframe width="560" height="315" src="https://www.youtube.com/embed/EmsGwhWU5y8" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+
+
+
