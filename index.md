@@ -28,6 +28,9 @@ The overall setup for the ObjectInHand dataset collection, we use Intel RealSens
 ### 2.2 Dataset extraction
 We upload all our dataset in [GoogleDrive](https://drive.google.com/drive/folders/15-xEcJt1EQ4qDDvfApL3PypsA4JlMyn-), and example code for data extraction can be available from [github](https://github.com/elevenjiang1/ObjectInHand-Dataset). 
 
+Also, a finetune with Shadow Hand mask and contact dataset can be available from [GoogleDrive](https://drive.google.com/drive/folders/1gvFa_img_y1sj1sz0HtcSKNG2ysTt9G_?usp=sharing), the mask is generated in pybullet.
+![ShadowHandMask](picture/ShadowHandMask.png)
+
 
 
 
